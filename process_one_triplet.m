@@ -52,3 +52,28 @@ function [tlikely_ind, plikely_ind] = find_Tlikely(pT_g)
         plikely_ind = not4;
     end
 end
+
+function [pgi_mas_T, pgi_sla, pgi_sym, pgi_mas_Tmin] = calc_pgi_new2(iii,icomb,psla, IABCsame,IA_BC_Amax,IA_BC_Bmax,IA_BC_Cmax, IABC_Amin, IABC_Bmin, IABC_Cmin, filter_min,loggenemeans,log_asym_min,log_sym_min,idxs)
+
+pgi_sla_1 = IABCsame(:,icomb); %p(gi | i slave, 1 distribution)
+pgi_sla_2Amax = 2*IA_BC_Amax(:,icomb); pgi_sla_2Amax(pgi_sla_2Amax<0) = 0; %(this is unlikely: should all be > 0
+pgi_sla_2Bmax = 2*IA_BC_Bmax(:,icomb); pgi_sla_2Bmax(pgi_sla_2Bmax<0) = 0; % but I did find one floating point error)
+pgi_sla_2Cmax = 2*IA_BC_Cmax(:,icomb); pgi_sla_2Cmax(pgi_sla_2Cmax<0) = 0;
+
+pgi_sym = [pgi_sla_2Amax pgi_sla_2Bmax pgi_sla_2Cmax];
+
+pgi_mas_Tmin = 3*[IABC_Amin(:,icomb) IABC_Bmin(:,icomb) IABC_Cmin(:,icomb)]; %p(gi | i master, T daughter)
+pgi_mas_T = (1/2)*[pgi_mas_Tmin(:,2)+pgi_mas_Tmin(:,3) pgi_mas_Tmin(:,1)+pgi_mas_Tmin(:,3) pgi_mas_Tmin(:,2)+pgi_mas_Tmin(:,1)];
+%p(gi | i master, T progenitor)
+pgi_sla = psla(1)*pgi_sla_1 + psla(2)*pgi_sla_2Amax + psla(3)*pgi_sla_2Bmax + psla(4)*pgi_sla_2Cmax; % p(g_i | slave)
+if filter_min
+    expressed = loggenemeans(:,idxs(iii))>log_asym_min;
+    sym_expressed = loggenemeans(:,idxs(iii))>log_sym_min;
+    pgi_mas_T = pgi_mas_T.*expressed.*((sum(expressed,2)>1)*ones(1,3));
+    pgi_sym = pgi_sym.*sym_expressed;
+end
+
+pgi_mas_0 = (1/3)*sum(pgi_mas_T,2); %p(g_i | master)
+pgi_mas_T = [pgi_mas_T pgi_mas_0];        
+
+end
