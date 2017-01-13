@@ -1,9 +1,10 @@
-function [tlikely_ind, plikely_ind, ncandidates] = process_one_triplet(combinations, icomb,psla, Integrals, filter_min, loggenemeans,log_asym_min,log_sym_min,idxs, allodds, topology_prior, plikely_thresh, plot, labs)	
-    topology_prior = [pA pB pC p0];
-    iii = combinations(icomb,:);
+function [tlikely_ind, plikely_ind, ncandidates] = process_one_triplet(icomb, Integrals, Params, tripdata, makeplot, labs)	
+    allodds = Params.oddsrange;
+    topology_prior = Params.topology_prior;
+    plikely_thresh = Params.plikely_thresh;
 	
 	%find p(g_i|T,a_i) for each gene starting from integrals
-    [pgi_mas_T, pgi_sla] = calc_pgi_topo(iii,icomb,psla, Integrals, filter_min,loggenemeans,log_asym_min,log_sym_min,idxs);
+    [pgi_mas_T, pgi_sla] = calc_pgi_topo(icomb,Integrals, Params, tripdata);
 
 	pT_g = zeros(length(allodds),4); %pT_g as a function of prior odds
     odds_mas_sla_T = pgi_mas_T./(pgi_sla*ones(1,4));
@@ -23,17 +24,17 @@ function [tlikely_ind, plikely_ind, ncandidates] = process_one_triplet(combinati
 
 	[tlikely_ind, plikely_ind] = find_Tlikely(pT_g);
     
-    if plot
+    if makeplot
         %make a dot plot
         pgi_mas_Tmin = [3*Integrals.IABC_Amin(:,icomb) 3*Integrals.IABC_Bmin(:,icomb) 3*Integrals.IABC_Cmin(:,icomb)]; %find p(g_i | a_i=1, cell T is min)
         [~,imax] = max(pgi_mas_Tmin,[],2); %find cell type that gene i votes against
         figure; semilogx(odds_mas_sla_T,4-imax,'.'); 
-        axis([1e-10 10*max(allodds) 0 4]); set(gca,'YTick', 1:3, 'YTickLabel', labs(iii([3 2 1]))) %plot boundaries
+        axis([1e-10 10*max(allodds) 0 4]); set(gca,'YTick', 1:3, 'YTickLabel', labs([3 2 1])) %plot boundaries
         set(gcf,'color','w');
 
         %plot p(T|{g}) as a function of p(b_i=1)/p(b_i=0)
         figure; semilogx(allodds, pT_g, 'LineWidth', 2); 
-        legend(labs{iii(1)},labs{iii(2)},labs{iii(3)},'null', 'Location', 'northwest'); 
+        legend(labs{1},labs{2},labs{3},'null', 'Location', 'northwest'); 
         axis([min(allodds) max(allodds) -0.05 1.05])
         set(gcf,'color','w');
     end
@@ -53,7 +54,12 @@ function [tlikely_ind, plikely_ind] = find_Tlikely(pT_g)
     end
 end
 
-function [pgi_mas_T, pgi_sla, pgi_sym] = calc_pgi_topo(iii,icomb,psla, Integrals, filter_min,loggenemeans,log_asym_min,log_sym_min,idxs)
+function [pgi_mas_T, pgi_sla, pgi_sym] = calc_pgi_topo(icomb,Integrals, Params, data)
+
+    log_asym_min = Params.log_asym_min;
+    log_sym_min = Params.log_sym_min;
+    filter_min = Params.filter_min;
+    psla = Params.psla;
 
 pgi_sla_1 = Integrals.IABCsame(:,icomb); %p(gi | i slave, 1 distribution)
 pgi_sla_2Amax = 2*Integrals.IA_BC_Amax(:,icomb); pgi_sla_2Amax(pgi_sla_2Amax<0) = 0; %(this is unlikely: should all be > 0
@@ -67,8 +73,8 @@ pgi_mas_T = (1/2)*[pgi_mas_Tmin(:,2)+pgi_mas_Tmin(:,3) pgi_mas_Tmin(:,1)+pgi_mas
 %p(gi | i master, T progenitor)
 pgi_sla = psla(1)*pgi_sla_1 + psla(2)*pgi_sla_2Amax + psla(3)*pgi_sla_2Bmax + psla(4)*pgi_sla_2Cmax; % p(g_i | slave)
 if filter_min
-    expressed = loggenemeans(:,idxs(iii))>log_asym_min;
-    sym_expressed = loggenemeans(:,idxs(iii))>log_sym_min;
+    expressed = data>log_asym_min;
+    sym_expressed = data>log_sym_min;
     pgi_mas_T = pgi_mas_T.*expressed.*((sum(expressed,2)>1)*ones(1,3));
     pgi_sym = pgi_sym.*sym_expressed;
 end

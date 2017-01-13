@@ -10,14 +10,13 @@
 %P --> prior probability distribution P(mu, sigma). dimensions nbins x nbins
 %Mu, Sigma --> axes for P. dimensions nbins x nbins
 
-use_kde = 0;
-nbins = 2^8; 
-mumin = 2; mumax = 14;
-sigmin = 0; sigmax = 0.75;
-cutoff = log2(100);
+Params = get_parameters();
+nbins = Params.nbins; 
+mumin = Params.mumin; mumax = Params.mumax;
+sigmin = Params.sigmin; sigmax = Params.sigmax;
 [loggenemeans, loggenestds] = calc_log_mean_std(tfdata, iunique);
 
-if use_kde == 1
+if Params.use_kde == 1
     [bandwidth,density,Mu,Sigma]=kde2d([loggenemeans(:) loggenestds(:)],nbins,[mumin sigmin],[mumax sigmax]); %kernel density estimation. 
     % Reference: Botev. Z.I., Grotowski J.F and Kroese D. P. (2010). Kernel density estimation via diffusion. Annals of Statistics. 
     % Volume 38, Number 5, Pages 2916--2957
@@ -39,7 +38,7 @@ pc.JobStorageLocation = strcat('/scratch/furchtg/',getenv('SLURM_JOB_ID'));
 matlabpool(pc,16)
 
 tic;
-Integrals = calculate_integrals(tfdata, idxs, iunique, P, Mu, Sigma, cutoff); 
+Integrals = calculate_integrals(tfdata, idxs, iunique, P, Mu, Sigma, Params.cutoff); 
 toc;
 
 clear pc
@@ -49,32 +48,18 @@ ncells = size(Integrals.IAB,1); ngenes = size(Integrals.IAB,3);
 combinations = combnk(1:ncells,3); %possible combinations of 3
 selection = combinations; %triplets to consider (could choose a subset based on a preliminary distance metric)
 
-psla = [1/2 1/6 1/6 1/6]; %vector of prior probabilities for non-transition genes
-topology_prior = [1/4 1/4 1/4 1/4];
-
-%parameters for topology inference
-plikely_thresh = 0.5;
-filter_min = 0;%ignore genes with values under threshold?
-log_asym_min = log2(100); %threshold for expression
-log_sym_min = log2(50); %threshold for expression
-allodds = logspace(-4,2,50); %vary prior odds p(i master)/p(i slave)
-
 ncandid = zeros(size(combinations,1),1); tlikely = zeros(size(ncandid)); plikely = zeros(size(ncandid));
-
+makeplot = 0;
 %find most likely topologies
 for j=1:size(combinations,1)
     icomb = j;
-    [tlikely_ind, plikely_ind, ncandidates] = process_one_triplet(combinations, icomb,psla, Integrals, filter_min, loggenemeans,log_asym_min,log_sym_min,idxs, allodds, topology_prior, 0, labs);
+    iii = combinations(icomb,:);
+    trip_data = loggenemeans(:,idxs(iii));
+    [tlikely_ind, plikely_ind, ncandidates] = process_one_triplet(icomb, Integrals, Params, trip_data, makeplot, labs(iii));
     tlikely(j) = tlikely_ind;
     plikely(j) = plikely_ind;
     ncandid(j) = ncandidates;
 end
-
-
-%parameters for gene probabilities
-N_thresh_sym = 1000; N_thresh_asym = 1000; %thresholds for defining gene classes
-p_thresh_asym = 0.8; p_thresh_sym = 0.8; 
-odds0 = 0.05;
 
 %find set of marker and transition genes
 good_genes = zeros(ngenes,1);
@@ -83,8 +68,8 @@ for i=1:size(combinations,1)
         icomb = i;
         iii = combinations(icomb,:);
         trip_data = loggenemeans(:,idxs(iii));
-        [prob_asym_topol, prob_marker_topol] = calculate_gene_probabilities(icomb,psla, Integrals, filter_min,trip_data,log_asym_min,log_sym_min, tlikely(icomb), odds0);
-        genestatus = find_classes(prob_asym_topol, prob_marker_topol, tlikely(icomb), trip_data, N_thresh_asym, N_thresh_sym, p_thresh_asym, p_thresh_sym);
+        [prob_asym_topol, prob_marker_topol] = calculate_gene_probabilities(icomb,Integrals, Params,trip_data,tlikely(icomb));
+        genestatus = find_classes(prob_asym_topol, prob_marker_topol, tlikely(icomb), Params);
         good_genes = (good_genes + abs(genestatus))>0;
     end
 end

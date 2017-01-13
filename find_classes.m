@@ -1,4 +1,8 @@
-function status = find_classes(pasym_gi_T, pmar_gi_T, tlik, data, N_thresh_asym, N_thresh_sym, p_thresh_asym, p_thresh_sym)
+function status = find_classes(pasym_gi_T, pmar_gi_T, tlik, Params)
+    N_thresh_asym = Params.N_thresh_asym; 
+    N_thresh_sym = Params.N_thresh_sym; 
+    p_thresh_asym = Params.p_thresh_asym;
+    p_thresh_sym = Params.p_thresh_sym;
     ngenes = size(pasym_gi_T,1);
     status = zeros(ngenes,1);
     % asym
