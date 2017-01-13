@@ -13,7 +13,7 @@ Params.plikely_thresh = 0.5;
 Params.filter_min = 0;%ignore genes with values under threshold?
 Params.log_asym_min = log2(100); %threshold for expression
 Params.log_sym_min = log2(50); %threshold for expression
-Params.allodds = logspace(-4,2,50); %vary prior odds p(i master)/p(i slave)
+Params.oddsrange = logspace(-4,2,50); %vary prior odds p(i master)/p(i slave)
 
 %parameters for gene probabilities
 Params.N_thresh_sym = 1000; 
