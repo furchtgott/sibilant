@@ -1,5 +1,5 @@
-function [prob_asym_topol, prob_marker_topol] = calculate_gene_probabilities(icomb,psla, IABCsame,IA_BC_Amax,IA_BC_Bmax,IA_BC_Cmax, IABC_Amin, IABC_Bmin, IABC_Cmin, filter_min,trip_data,log_asym_min,log_sym_min, tlik, odds0);
-    [pgi_mas_T, pgi_sla, pgi_sym] = calc_pgi_topo(icomb,psla, IABCsame,IA_BC_Amax,IA_BC_Bmax,IA_BC_Cmax, IABC_Amin, IABC_Bmin, IABC_Cmin, filter_min,trip_data,log_asym_min,log_sym_min);
+function [prob_asym_topol, prob_marker_topol] = calculate_gene_probabilities(icomb,psla, Integrals, filter_min,trip_data,log_asym_min,log_sym_min, tlik, odds0);
+    [pgi_mas_T, pgi_sla, pgi_sym] = calc_pgi_topo(icomb,psla, Integrals, filter_min,trip_data,log_asym_min,log_sym_min);
     % asym
     odds_asym_topol = odds0*pgi_mas_T(:,tlik)./pgi_sla; % p(a_i = 1 | g_i, T)/p(a_i = 0 | g_i, T)
     prob_asym_topol = odds_asym_topol./(1+odds_asym_topol); % p(a_i = 1 | g_i, T)
@@ -24,20 +24,16 @@ function [prob_asym_topol, prob_marker_topol] = calculate_gene_probabilities(ico
 
 end
 
-function [pgi_mas_T, pgi_sla, pgi_sym] = calc_pgi_topo(icomb,psla, IABCsame,IA_BC_Amax,IA_BC_Bmax,IA_BC_Cmax, IABC_Amin, IABC_Bmin, IABC_Cmin, filter_min,data, log_asym_min,log_sym_min)
+function [pgi_mas_T, pgi_sla, pgi_sym] = calc_pgi_topo(icomb,psla, Integrals, filter_min,data, log_asym_min,log_sym_min)
 
-pgi_sla_1 = IABCsame(:,icomb); %p(gi | i slave, 1 distribution)
-pgi_sla_2Amax = 2*IA_BC_Amax(:,icomb); pgi_sla_2Amax(pgi_sla_2Amax<0) = 0; %(this is unlikely: should all be > 0
-pgi_sla_2Bmax = 2*IA_BC_Bmax(:,icomb); pgi_sla_2Bmax(pgi_sla_2Bmax<0) = 0; % but I did find one floating point error)
-pgi_sla_2Cmax = 2*IA_BC_Cmax(:,icomb); pgi_sla_2Cmax(pgi_sla_2Cmax<0) = 0;
+pgi_sla_1 = Integrals.IABCsame(:,icomb); %p(gi | i slave, 1 distribution)
+pgi_sla_2Amax = 2*Integrals.IA_BC_Amax(:,icomb); pgi_sla_2Amax(pgi_sla_2Amax<0) = 0; %(this is unlikely: should all be > 0
+pgi_sla_2Bmax = 2*Integrals.IA_BC_Bmax(:,icomb); pgi_sla_2Bmax(pgi_sla_2Bmax<0) = 0; % but I did find one floating point error)
+pgi_sla_2Cmax = 2*Integrals.IA_BC_Cmax(:,icomb); pgi_sla_2Cmax(pgi_sla_2Cmax<0) = 0;
 
 pgi_sym = [pgi_sla_2Amax pgi_sla_2Bmax pgi_sla_2Cmax];
 
-pgi_mas_3Amin = 3*IABC_Amin(:,icomb);
-pgi_mas_3Bmin = 3*IABC_Bmin(:,icomb);
-pgi_mas_3Cmin = 3*IABC_Cmin(:,icomb);
-
-pgi_mas_Tmin = [pgi_mas_3Amin pgi_mas_3Bmin pgi_mas_3Cmin]; %p(gi | i master, T daughter)
+pgi_mas_Tmin = 3*[Integrals.IABC_Amin(:,icomb) Integrals.IABC_Bmin(:,icomb) Integrals.IABC_Cmin(:,icomb)]; %p(gi | i master, T daughter)
 pgi_mas_T = (1/2)*[pgi_mas_Tmin(:,2)+pgi_mas_Tmin(:,3) pgi_mas_Tmin(:,1)+pgi_mas_Tmin(:,3) pgi_mas_Tmin(:,2)+pgi_mas_Tmin(:,1)];
 %p(gi | i master, T progenitor)
 pgi_sla = psla(1)*pgi_sla_1 + psla(2)*pgi_sla_2Amax + psla(3)*pgi_sla_2Bmax + psla(4)*pgi_sla_2Cmax; % p(g_i | slave)

@@ -1,4 +1,4 @@
-function [IA, IAB, IABCsame, IABC_Amin, IABC_Bmin, IABC_Cmin, IA_BC_Amax, IA_BC_Bmax, IA_BC_Cmax] = calculate_integrals(log2tfdata, idxs, iunique, P, M, S, cutoff)
+function Integrals = calculate_integrals(log2tfdata, idxs, iunique, P, M, S, cutoff)
 ngenes = size(log2tfdata,1);
 ncells = length(idxs);
 combinations = combnk(1:ncells,3);
@@ -112,5 +112,15 @@ parfor i=1:ngenes
     IA_BC_Bmax(i,:) = tempIA_BC_Bmax;
     IA_BC_Cmax(i,:) = tempIA_BC_Cmax;
 end
+
+Integrals.IA = IA;
+Integrals.IAB = IAB;
+Integrals.IABCsame = IABsame;
+Integrals.IABC_Amin = IABC_Amin;
+Integrals.IABC_Bmin = IABC_Bmin;
+Integrals.IABC_Cmin = IABC_Cmin;
+Integrals.IA_BC_Amax = IA_BC_Amax;
+Integrals.IA_BC_Bmax = IA_BC_Bmax;
+Integrals.IA_BC_Cmax = IA_BC_Cmax;
 
 end

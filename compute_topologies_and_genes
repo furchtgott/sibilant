@@ -39,13 +39,13 @@ pc.JobStorageLocation = strcat('/scratch/furchtg/',getenv('SLURM_JOB_ID'));
 matlabpool(pc,16)
 
 tic;
-[IA, IAB, IABCsame, IABC_Amin, IABC_Bmin, IABC_Cmin, IA_BC_Amax, IA_BC_Bmax, IA_BC_Cmax] = calculate_integrals_both_test4(tfdata, idxs, iunique, P, Mu, Sigma, cutoff); 
+Integrals = calculate_integrals(tfdata, idxs, iunique, P, Mu, Sigma, cutoff); 
 toc;
 
 clear pc
 
 
-ncells = size(IAB,1); ngenes = size(IAB,3);
+ncells = size(Integrals.IAB,1); ngenes = size(Integrals.IAB,3);
 combinations = combnk(1:ncells,3); %possible combinations of 3
 selection = combinations; %triplets to consider (could choose a subset based on a preliminary distance metric)
 
@@ -64,7 +64,7 @@ ncandid = zeros(size(combinations,1),1); tlikely = zeros(size(ncandid)); plikely
 %find most likely topologies
 for j=1:size(combinations,1)
     icomb = j;
-    [tlikely_ind, plikely_ind, ncandidates] = process_one_triplet(combinations, icomb,psla, IABCsame,IA_BC_Amax,IA_BC_Bmax,IA_BC_Cmax, IABC_Amin, IABC_Bmin, IABC_Cmin, filter_min, loggenemeans,log_asym_min,log_sym_min,idxs, allodds, topology_prior, 0, labs);
+    [tlikely_ind, plikely_ind, ncandidates] = process_one_triplet(combinations, icomb,psla, Integrals, filter_min, loggenemeans,log_asym_min,log_sym_min,idxs, allodds, topology_prior, 0, labs);
     tlikely(j) = tlikely_ind;
     plikely(j) = plikely_ind;
     ncandid(j) = ncandidates;
@@ -83,9 +83,8 @@ for i=1:size(combinations,1)
         icomb = i;
         iii = combinations(icomb,:);
         trip_data = loggenemeans(:,idxs(iii));
-        [pgi_mas_T, pgi_sla, pgi_sym] = calc_pgi_topo(icomb,psla, IABCsame,IA_BC_Amax,IA_BC_Bmax,IA_BC_Cmax, IABC_Amin, IABC_Bmin, IABC_Cmin, filter_min,trip_data,log_asym_min,log_sym_min);
-        [pasym_gi_T, pmarker_gi_T] = find_gene_probabilities(pgi_mas_T, pgi_sla, pgi_sym, tlikely(icomb), psla, odds0);
-        genestatus = find_classes(pasym_gi_T, pmarker_gi_T, tlikely(icomb), trip_data, N_thresh_asym, N_thresh_sym, p_thresh_asym, p_thresh_sym);
+        [prob_asym_topol, prob_marker_topol] = calculate_gene_probabilities(icomb,psla, Integrals, filter_min,trip_data,log_asym_min,log_sym_min, tlikely(icomb), odds0);
+        genestatus = find_classes(prob_asym_topol, prob_marker_topol, tlikely(icomb), trip_data, N_thresh_asym, N_thresh_sym, p_thresh_asym, p_thresh_sym);
         good_genes = (good_genes + abs(genestatus))>0;
     end
 end
