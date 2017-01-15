@@ -7,44 +7,11 @@
 %iunique --> what is the cell type identity of each column of tfdata?
 %iunique has same length as the # of columns in tfdata, and the max value
 %of iunique is the number of cell types.
-%P --> prior probability distribution P(mu, sigma). dimensions nbins x nbins
-%Mu, Sigma --> axes for P. dimensions nbins x nbins
 
-Params = get_parameters();
-nbins = Params.nbins; 
-mumin = Params.mumin; mumax = Params.mumax;
-sigmin = Params.sigmin; sigmax = Params.sigmax;
 [loggenemeans, loggenestds] = calc_log_mean_std(tfdata, iunique);
+Integrals = calculate_integrals(tfdata, idxs, iunique, Params)
 
-if Params.use_kde == 1
-    [bandwidth,density,Mu,Sigma]=kde2d([loggenemeans(:) loggenestds(:)],nbins,[mumin sigmin],[mumax sigmax]); %kernel density estimation. 
-    % Reference: Botev. Z.I., Grotowski J.F and Kroese D. P. (2010). Kernel density estimation via diffusion. Annals of Statistics. 
-    % Volume 38, Number 5, Pages 2916--2957
-    density(density(:)<0) = 0; %get rid of numerical errors (sum is ~10^-8)
-    dm=Mu(1,2)-Mu(1,1);
-    ds=Sigma(2,1)-Sigma(1,1);
-    P = density/(dm*ds*sum(density(:)));
-else
-    dm = (mumax-mumin)/nbins;
-    ds = (sigmax-sigmin)/nbins;
-    [Mu,Sigma]=meshgrid(mumin:dm:mumax,sigmin:ds:sigmax);
-    density = ones(size(Mu));
-    P = density/(dm*ds*sum(density(:)));
-end
-
-%start parallel cluster
-pc = parcluster('local');
-pc.JobStorageLocation = strcat('/scratch/furchtg/',getenv('SLURM_JOB_ID'));
-matlabpool(pc,16)
-
-tic;
-Integrals = calculate_integrals(tfdata, idxs, iunique, P, Mu, Sigma, Params.cutoff); 
-toc;
-
-clear pc
-
-
-ncells = size(Integrals.IAB,1); ngenes = size(Integrals.IAB,3);
+ncells = length(idxs); ngenes = size(tfdata, 1);
 combinations = combnk(1:ncells,3); %possible combinations of 3
 selection = combinations; %triplets to consider (could choose a subset based on a preliminary distance metric)
 
