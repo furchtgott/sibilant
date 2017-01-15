@@ -1,4 +1,4 @@
-function Integrals = calculate_integrals_pnp(log2tfdata, idxs, iunique, Params)
+function Integrals = calculate_integrals(log2tfdata, idxs, iunique, Params)
 
 nbins = Params.nbins; 
 mumin = Params.mumin; mumax = Params.mumax;
