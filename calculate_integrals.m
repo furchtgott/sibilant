@@ -1,4 +1,30 @@
-function [IA, IAB, IABCsame, IABC_Amin, IABC_Bmin, IABC_Cmin, IA_BC_Amax, IA_BC_Bmax, IA_BC_Cmax] = calculate_integrals(log2tfdata, idxs, iunique, P, M, S, cutoff)
+function Integrals = calculate_integrals(log2tfdata, idxs, iunique, Params)
+
+nbins = Params.nbins; 
+mumin = Params.mumin; mumax = Params.mumax;
+sigmin = Params.sigmin; sigmax = Params.sigmax;
+cutoff = Params.cutoff;
+use_parallel = Params.use_parallel;
+[loggenemeans, loggenestds] = calc_log_mean_std(log2tfdata, iunique);
+
+%estimate mean and standard deviation prior
+if Params.use_kde == 1
+    [~,density,M,S]=kde2d([loggenemeans(:) loggenestds(:)],nbins,[mumin sigmin],[mumax sigmax]); %kernel density estimation. 
+    % Reference: Botev. Z.I., Grotowski J.F and Kroese D. P. (2010). Kernel density estimation via diffusion. Annals of Statistics. 
+    % Volume 38, Number 5, Pages 2916--2957
+    density(density(:)<0) = 0; %get rid of numerical errors (sum of negative elements was ~10^-8 in testing)
+    dm=M(1,2)-M(1,1);
+    ds=S(2,1)-S(1,1);
+    P = density/(dm*ds*sum(density(:)));
+else
+    dm = (mumax-mumin)/nbins;
+    ds = (sigmax-sigmin)/nbins;
+    [M,S]=meshgrid(mumin:dm:mumax,sigmin:ds:sigmax);
+    density = ones(size(M));
+    P = density/(dm*ds*sum(density(:)));
+end
+
+
 ngenes = size(log2tfdata,1);
 ncells = length(idxs);
 combinations = combnk(1:ncells,3);
@@ -20,7 +46,52 @@ IABC_Cmin = zeros(ngenes, size(combinations,1));%integrals with muC minimum
 dm=M(1,2)-M(1,1);
 ds=S(2,1)-S(1,1);
 
-parfor i=1:ngenes
+if use_parallel
+    %start parallel cluster
+    pc = parcluster('local');
+    %pc.JobStorageLocation = strcat('/scratch/furchtg/',getenv('SLURM_JOB_ID'));
+    parpool(pc,Params.parallel_pool_size)
+    parfor i=1:ngenes
+        [tempIA, tempIAB, tempIABCsame, tempIABC_Amin, tempIABC_Bmin, tempIABC_Cmin, tempIA_BC_Amax, tempIA_BC_Bmax, tempIA_BC_Cmax] = calculate_integrals_one_gene(i, ncells, combinations, log2tfdata, iunique, idxs, P, M, S, logS, lM, firstcut, dm, ds);
+        IA(i,:) = tempIA;
+        IAB(:,:,i) = tempIAB;
+        IABCsame(i,:) = tempIABCsame;
+        IABC_Amin(i,:) = tempIABC_Amin;
+        IABC_Bmin(i,:) = tempIABC_Bmin;
+        IABC_Cmin(i,:) = tempIABC_Cmin;
+        IA_BC_Amax(i,:) = tempIA_BC_Amax;
+        IA_BC_Bmax(i,:) = tempIA_BC_Bmax;
+        IA_BC_Cmax(i,:) = tempIA_BC_Cmax;
+    end
+    clear pc
+else
+    for i=1:ngenes
+        [tempIA, tempIAB, tempIABCsame, tempIABC_Amin, tempIABC_Bmin, tempIABC_Cmin, tempIA_BC_Amax, tempIA_BC_Bmax, tempIA_BC_Cmax] = calculate_integrals_one_gene(i, ncells, combinations, log2tfdata, iunique, idxs, P, M, S, logS, lM, firstcut, dm, ds);
+        IA(i,:) = tempIA;
+        IAB(:,:,i) = tempIAB;
+        IABCsame(i,:) = tempIABCsame;
+        IABC_Amin(i,:) = tempIABC_Amin;
+        IABC_Bmin(i,:) = tempIABC_Bmin;
+        IABC_Cmin(i,:) = tempIABC_Cmin;
+        IA_BC_Amax(i,:) = tempIA_BC_Amax;
+        IA_BC_Bmax(i,:) = tempIA_BC_Bmax;
+        IA_BC_Cmax(i,:) = tempIA_BC_Cmax;
+    end
+end
+
+Integrals.IA = IA;
+Integrals.IAB = IAB;
+Integrals.IABCsame = IABCsame;
+Integrals.IABC_Amin = IABC_Amin;
+Integrals.IABC_Bmin = IABC_Bmin;
+Integrals.IABC_Cmin = IABC_Cmin;
+Integrals.IA_BC_Amax = IA_BC_Amax;
+Integrals.IA_BC_Bmax = IA_BC_Bmax;
+Integrals.IA_BC_Cmax = IA_BC_Cmax;
+
+end
+
+function [tempIA, tempIAB, tempIABCsame, tempIABC_Amin, tempIABC_Bmin, tempIABC_Cmin, tempIA_BC_Amax, tempIA_BC_Bmax, tempIA_BC_Cmax] = calculate_integrals_one_gene(i, ncells, combinations, log2tfdata, iunique, idxs, P, M, S, logS, lM, firstcut, dm, ds)
     tempIA = zeros(1,ncells);
     tempIAB = zeros(ncells,ncells,1);
     tempIABCsame = zeros(1, size(combinations,1));
@@ -102,15 +173,4 @@ parfor i=1:ngenes
         tempIA_BC_Bmax(1,j) = dm^2*trapz(trapz(B_AC,1),2);
         tempIA_BC_Cmax(1,j) = dm^2*trapz(trapz(C_AB,1),2);
     end
-    IA(i,:) = tempIA;
-    IAB(:,:,i) = tempIAB;
-    IABCsame(i,:) = tempIABCsame;
-    IABC_Amin(i,:) = tempIABC_Amin;
-    IABC_Bmin(i,:) = tempIABC_Bmin;
-    IABC_Cmin(i,:) = tempIABC_Cmin;
-    IA_BC_Amax(i,:) = tempIA_BC_Amax;
-    IA_BC_Bmax(i,:) = tempIA_BC_Bmax;
-    IA_BC_Cmax(i,:) = tempIA_BC_Cmax;
-end
-
 end
