@@ -9,14 +9,14 @@
 %of iunique is the number of cell types.
 
 [loggenemeans, loggenestds] = calc_log_mean_std(tfdata, iunique);
-Integrals = calculate_integrals(tfdata, idxs, iunique, Params)
+Params = get_parameters();
+Integrals = calculate_integrals(tfdata, idxs, iunique, Params);
 
 ncells = length(idxs); ngenes = size(tfdata, 1);
 combinations = combnk(1:ncells,3); %possible combinations of 3
-selection = combinations; %triplets to consider (could choose a subset based on a preliminary distance metric)
 
 ncandid = zeros(size(combinations,1),1); tlikely = zeros(size(ncandid)); plikely = zeros(size(ncandid));
-makeplot = 0;
+makeplot = 0; %make plots?
 %find most likely topologies
 for j=1:size(combinations,1)
     icomb = j;
@@ -31,12 +31,12 @@ end
 %find set of marker and transition genes
 good_genes = zeros(ngenes,1);
 for i=1:size(combinations,1)
-    if and(plikely(i)>plikely_thresh,tlikely(i)~=0)
+    if and(plikely(i)>Params.plikely_thresh,ncandid(i)==1)
         icomb = i;
         iii = combinations(icomb,:);
         trip_data = loggenemeans(:,idxs(iii));
         [prob_asym_topol, prob_marker_topol] = calculate_gene_probabilities(icomb,Integrals, Params,trip_data,tlikely(icomb));
-        genestatus = find_classes(prob_asym_topol, prob_marker_topol, tlikely(icomb), Params);
+        genestatus = find_classes(prob_asym_topol, prob_marker_topol, tlikely(icomb), trip_data, Params);
         good_genes = (good_genes + abs(genestatus))>0;
     end
 end

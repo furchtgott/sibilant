@@ -1,4 +1,4 @@
-function Integrals = calculate_integrals_pnp(log2tfdata, idxs, iunique, Params)
+function Integrals = calculate_integrals(log2tfdata, idxs, iunique, Params)
 
 nbins = Params.nbins; 
 mumin = Params.mumin; mumax = Params.mumax;
@@ -9,7 +9,7 @@ use_parallel = Params.use_parallel;
 
 %estimate mean and standard deviation prior
 if Params.use_kde == 1
-    [bandwidth,density,M,S]=kde2d([loggenemeans(:) loggenestds(:)],nbins,[mumin sigmin],[mumax sigmax]); %kernel density estimation. 
+    [~,density,M,S]=kde2d([loggenemeans(:) loggenestds(:)],nbins,[mumin sigmin],[mumax sigmax]); %kernel density estimation. 
     % Reference: Botev. Z.I., Grotowski J.F and Kroese D. P. (2010). Kernel density estimation via diffusion. Annals of Statistics. 
     % Volume 38, Number 5, Pages 2916--2957
     density(density(:)<0) = 0; %get rid of numerical errors (sum of negative elements was ~10^-8 in testing)

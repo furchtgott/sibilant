@@ -1,4 +1,4 @@
-function status = find_classes(pasym_gi_T, pmar_gi_T, tlik, Params)
+function status = find_classes(pasym_gi_T, pmar_gi_T, tlik, data, Params)
     N_thresh_asym = Params.N_thresh_asym; 
     N_thresh_sym = Params.N_thresh_sym; 
     p_thresh_asym = Params.p_thresh_asym;

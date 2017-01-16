@@ -1,6 +1,7 @@
 function [prob_asym_topol, prob_marker_topol] = calculate_gene_probabilities(icomb,Integrals, Params,trip_data,tlik)
-
-    [pgi_mas_T, pgi_sla, pgi_sym] = calc_pgi_topo(icomb,Integrals, Params, tripdata);
+    odds0 = Params.odds0;
+    psla = Params.psla;
+    [pgi_mas_T, pgi_sla, pgi_sym] = calc_pgi_topo(icomb,Integrals, Params, trip_data);
     % asym
     odds_asym_topol = odds0*pgi_mas_T(:,tlik)./pgi_sla; % p(a_i = 1 | g_i, T)/p(a_i = 0 | g_i, T)
     prob_asym_topol = odds_asym_topol./(1+odds_asym_topol); % p(a_i = 1 | g_i, T)

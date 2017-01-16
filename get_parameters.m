@@ -1,7 +1,7 @@
 function Params = get_parameters()
 
 Params.use_kde = 0;
-Params.use_parallel = 1;
+Params.use_parallel = 0;
 Params.parallel_pool_size = 16;
 Params.nbins = 2^8; 
 Params.mumin = 2; 
