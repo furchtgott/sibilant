@@ -8,7 +8,7 @@ use_parallel = Params.use_parallel;
 [loggenemeans, loggenestds] = calc_log_mean_std(log2tfdata, iunique);
 
 %estimate mean and standard deviation prior
-if Params.use_kde == 1
+if Params.use_kde == 1 %Estimate empirical distribution of means and standard deviations
     [~,density,M,S]=kde2d([loggenemeans(:) loggenestds(:)],nbins,[mumin sigmin],[mumax sigmax]); %kernel density estimation. 
     % Reference: Botev. Z.I., Grotowski J.F and Kroese D. P. (2010). Kernel density estimation via diffusion. Annals of Statistics. 
     % Volume 38, Number 5, Pages 2916--2957
@@ -16,7 +16,7 @@ if Params.use_kde == 1
     dm=M(1,2)-M(1,1);
     ds=S(2,1)-S(1,1);
     P = density/(dm*ds*sum(density(:)));
-else
+else %uniform prior over means and standard deviations
     dm = (mumax-mumin)/nbins;
     ds = (sigmax-sigmin)/nbins;
     [M,S]=meshgrid(mumin:dm:mumax,sigmin:ds:sigmax);
@@ -24,6 +24,8 @@ else
     P = density/(dm*ds*sum(density(:)));
 end
 
+
+% Compute integrals
 
 ngenes = size(log2tfdata,1);
 ncells = length(idxs);
@@ -33,15 +35,15 @@ logS = log(2*pi*S.^2);
 Mu = M(1,2:end);
 firstcut = find(Mu>cutoff,1,'first');
 
-IA = zeros(ngenes, ncells);%integrals over one cell type (to use in integrals 3,4 and 5)
-IAB = zeros(ncells,ncells,ngenes);%integrals over 2 cell types (to use in integrals 3,4 and 5)
-IABCsame = zeros(ngenes, size(combinations,1));%integrals over 3 cell types (integral 2) muA=muB=muC 
-IA_BC_Amax = zeros(ngenes, size(combinations,1));%integrals with muA < muB=muC
-IA_BC_Bmax = zeros(ngenes, size(combinations,1));%integrals with muB < muA=muC
-IA_BC_Cmax = zeros(ngenes, size(combinations,1));%integrals with muC < muB=muA
-IABC_Amin = zeros(ngenes, size(combinations,1));%integrals with muA < muB and muA < muC
-IABC_Bmin = zeros(ngenes, size(combinations,1));%integrals with muB minimum
-IABC_Cmin = zeros(ngenes, size(combinations,1));%integrals with muC minimum
+IA = zeros(ngenes, ncells);%integrals over one cell type (to use in integrals for Equation 8)
+IAB = zeros(ncells,ncells,ngenes);%integrals over 2 cell types (to use in integrals for Equation 8)
+IABCsame = zeros(ngenes, size(combinations,1));%integrals over 3 cell types (Equation 9) muA=muB=muC 
+IA_BC_Amax = zeros(ngenes, size(combinations,1));%integrals with muA < muB=muC (Equation 8)
+IA_BC_Bmax = zeros(ngenes, size(combinations,1));%integrals with muB < muA=muC (Equation 8)
+IA_BC_Cmax = zeros(ngenes, size(combinations,1));%integrals with muC < muB=muA (Equation 8)
+IABC_Amin = zeros(ngenes, size(combinations,1));%integrals with muA < muB and muA < muC (Equation 5)
+IABC_Bmin = zeros(ngenes, size(combinations,1));%integrals with muB minimum (Equation 5)
+IABC_Cmin = zeros(ngenes, size(combinations,1));%integrals with muC minimum (Equation 5)
 
 dm=M(1,2)-M(1,1);
 ds=S(2,1)-S(1,1);
@@ -106,7 +108,7 @@ function [tempIA, tempIAB, tempIABCsame, tempIABC_Amin, tempIABC_Bmin, tempIABC_
     diags = cell(ncells,ncells);
     data = log2tfdata(i,:);
     for j=1:ncells
-        N1 = sum(iunique==idxs(j));%integrals over one cell type (to use in integrals 3,4 and 5)
+        N1 = sum(iunique==idxs(j));%integrals over one cell type (to use in integrals for Equation 8)
         xk1 = data(ismember(iunique,idxs(j)));
         F1 = -N1*logS/2; 
         [MM,XK] = meshgrid(M(1,:),xk1);
@@ -117,7 +119,7 @@ function [tempIA, tempIAB, tempIABCsame, tempIABC_Amin, tempIABC_Bmin, tempIABC_
         F1(F1~=F1) = 0;
         tempIA(1,j) = dm*ds*trapz(trapz(F1,1),2);
         Isigma{j} = ds*trapz(F1,1);%store integrals over sigma for use later
-        for k=(j+1):ncells %integrals over 2 cell types (to use in integrals 3,4 and 5)
+        for k=(j+1):ncells %integrals over 2 cell types (to use in integrals for Equation 8)
             N2 = sum(iunique==idxs(k)); N12 = N1+N2;
             xk2 = data(ismember(iunique,idxs(k)));
             xk12 = [xk1 xk2];
@@ -146,7 +148,7 @@ function [tempIA, tempIAB, tempIABCsame, tempIABC_Amin, tempIABC_Bmin, tempIABC_
     end
     
     for j=1:size(combinations,1)
-        xk123 = data(ismember(iunique,idxs(combinations(j,:)))); %computation of integral over 3 cell types (integral 2)
+        xk123 = data(ismember(iunique,idxs(combinations(j,:)))); %computation of integrals over 3 cell types 
         N123 = length(xk123);
         %F3 = ((1./sqrt(2*pi*S.^2)).^N123);
         F3 = -N123*logS/2; 
@@ -156,20 +158,20 @@ function [tempIA, tempIAB, tempIABCsame, tempIABC_Amin, tempIABC_Bmin, tempIABC_
         F3 = exp(F3);
         F3 = P.*F3; 
         F3(F3~=F3) = 0; 
-        tempIABCsame(1,j) = dm*ds*trapz(trapz(F3,1),2);
+        tempIABCsame(1,j) = dm*ds*trapz(trapz(F3,1),2); % Equation (9)
         
-        tempIABC_Amin(1,j) = dm^3*trapz(Isigma{combinations(j,1)}(1:lM-1).*diags{combinations(j,2),combinations(j,3)});
-        tempIABC_Bmin(1,j) = dm^3*trapz(Isigma{combinations(j,2)}(1:lM-1).*diags{combinations(j,1),combinations(j,3)});
+        tempIABC_Amin(1,j) = dm^3*trapz(Isigma{combinations(j,1)}(1:lM-1).*diags{combinations(j,2),combinations(j,3)}); % Equation (5)
+        tempIABC_Bmin(1,j) = dm^3*trapz(Isigma{combinations(j,2)}(1:lM-1).*diags{combinations(j,1),combinations(j,3)}); 
         tempIABC_Cmin(1,j) = dm^3*trapz(Isigma{combinations(j,3)}(1:lM-1).*diags{combinations(j,1),combinations(j,2)});
 
         
-        A_BC = repmat(reshape(Isigma{combinations(j,1)},[lM 1]),[1 lM]).*repmat(reshape(Isigma2{combinations(j,2),combinations(j,3)},[1 lM]),[lM 1]);
+        A_BC = repmat(reshape(Isigma{combinations(j,1)},[lM 1]),[1 lM]).*repmat(reshape(Isigma2{combinations(j,2),combinations(j,3)},[1 lM]),[lM 1]); 
         B_AC = repmat(reshape(Isigma{combinations(j,2)},[lM 1]),[1 lM]).*repmat(reshape(Isigma2{combinations(j,1),combinations(j,3)},[1 lM]),[lM 1]);
         C_AB = repmat(reshape(Isigma{combinations(j,3)},[lM 1]),[1 lM]).*repmat(reshape(Isigma2{combinations(j,1),combinations(j,2)},[1 lM]),[lM 1]);
         A_BC = tril(A_BC,1);
         B_AC = tril(B_AC,1);
         C_AB = tril(C_AB,1);
-        tempIA_BC_Amax(1,j) = dm^2*trapz(trapz(A_BC,1),2);
+        tempIA_BC_Amax(1,j) = dm^2*trapz(trapz(A_BC,1),2); % Equation (8)
         tempIA_BC_Bmax(1,j) = dm^2*trapz(trapz(B_AC,1),2);
         tempIA_BC_Cmax(1,j) = dm^2*trapz(trapz(C_AB,1),2);
     end
