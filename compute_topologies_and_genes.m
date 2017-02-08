@@ -17,7 +17,7 @@ combinations = combnk(1:ncells,3); %possible combinations of 3
 
 ncandid = zeros(size(combinations,1),1); tlikely = zeros(size(ncandid)); plikely = zeros(size(ncandid));
 makeplot = 0; %make plots?
-%find most likely topologies
+%find most likely topologies for each triplet
 for j=1:size(combinations,1)
     icomb = j;
     iii = combinations(icomb,:);
@@ -28,7 +28,7 @@ for j=1:size(combinations,1)
     ncandid(j) = ncandidates;
 end
 
-%find set of marker and transition genes
+%find union of marker and transition genes over all triplets
 good_genes = zeros(ngenes,1);
 for i=1:size(combinations,1)
     if and(plikely(i)>Params.plikely_thresh,ncandid(i)==1)
