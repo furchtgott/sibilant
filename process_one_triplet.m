@@ -29,12 +29,14 @@ function [tlikely_ind, plikely_ind, ncandidates] = process_one_triplet(icomb, In
         [~,imax] = max(pgi_mas_Tmin,[],2); %find cell type that gene i votes against
         figure; semilogx(odds_mas_sla_T,4-imax,'.'); 
         axis([1e-10 10*max(allodds) 0 4]); set(gca,'YTick', 1:3, 'YTickLabel', labs([3 2 1])) %plot boundaries
+        xlabel('Odds of being transition gene given data'); ylabel('Cell type in which gene is downregulated');
         set(gcf,'color','w');
 
         %plot p(T|{g}) as a function of p(b_i=1)/p(b_i=0)
         figure; semilogx(allodds, pT_g, 'LineWidth', 2); 
         legend(labs{1},labs{2},labs{3},'null', 'Location', 'northwest'); 
         axis([min(allodds) max(allodds) -0.05 1.05])
+        xlabel('prior odds'); ylabel('p(T|{g})');
         set(gcf,'color','w');
     end
 end

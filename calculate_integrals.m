@@ -1,4 +1,4 @@
-function Integrals = calculate_integrals(log2tfdata, idxs, iunique, Params)
+function Integrals = calculate_integrals(log2tfdata, iunique, Params)
 
 nbins = Params.nbins; 
 mumin = Params.mumin; mumax = Params.mumax;
@@ -28,7 +28,8 @@ end
 % Compute integrals
 
 ngenes = size(log2tfdata,1);
-ncells = length(idxs);
+ncells = length(unique(iunique));
+idxs = 1:ncells;
 combinations = combnk(1:ncells,3);
 lM = size(M,1);
 logS = log(2*pi*S.^2);
